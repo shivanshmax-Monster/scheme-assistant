@@ -1,0 +1,52 @@
+[
+  {
+    "id": "post-matric-scholarship-st",
+    "name": "Post Matric Scholarship Scheme For The Students Belonging To Scheduled Tribe",
+    "department": "Ministry Of Tribal Affairs",
+    "description": "This is a centrally sponsored scheme by the Ministry of Tribal Affairs for the students of Scheduled Tribe (ST) for studies in India. This scheme is for pursuing higher education starting from class XI to Post Graduation.",
+    "benefits": ["Financial Assistance", "Scholarship"],
+    "eligibility": ["Scheduled Tribe (ST)", "Student", "Class XI to Post Graduation"],
+    "tags": ["Education", "Post Matric", "Scheduled Tribe Students", "Scholarship", "Study"],
+    "url": "https://www.myscheme.gov.in/schemes/post-matric-scholarship-st"
+  },
+  {
+    "id": "pm-kisan",
+    "name": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)",
+    "department": "Department of Agriculture and Farmers Welfare",
+    "description": "PM-KISAN is a central sector scheme with 100% funding from Government of India. Under the scheme an income support of 6,000/- per year in three equal installments will be provided to all land holding farmer families.",
+    "benefits": ["Financial Assistance of 6000 per year"],
+    "eligibility": ["Farmer Families", "Landholding"],
+    "tags": ["Agriculture", "Farmers", "Financial Assistance"],
+    "url": "https://www.myscheme.gov.in/schemes/pm-kisan"
+  },
+  {
+    "id": "sukanya-samriddhi",
+    "name": "Sukanya Samriddhi Yojana",
+    "department": "Ministry of Finance",
+    "description": "A small savings scheme backed by the Government of India targeted exclusively towards the parents of a girl child. The scheme encourages parents to build a fund for the future education and marriage expenses for their female child.",
+    "benefits": ["High Interest Savings", "Tax Benefits"],
+    "eligibility": ["Girl Child below 10 years", "Parents/Guardians"],
+    "tags": ["Women Empowerment", "Girl Child", "Savings", "Financial Inclusion"],
+    "url": "https://www.myscheme.gov.in/schemes/sukanya-samriddhi"
+  },
+  {
+    "id": "ayushman-bharat",
+    "name": "Ayushman Bharat Pradhan Mantri Jan Arogya Yojana",
+    "department": "Ministry of Health and Family Welfare",
+    "description": "PMJAY is the world's largest health insurance/ assurance scheme fully financed by the government. It provides a cover of Rs. 5 lakhs per family per year for secondary and tertiary care hospitalization across public and private empaneled hospitals in India.",
+    "benefits": ["Health Insurance cover of Rs 5 Lakh"],
+    "eligibility": ["BPL Families", "SECC Database identified families"],
+    "tags": ["Health", "Insurance", "Medical", "BPL"],
+    "url": "https://www.myscheme.gov.in/schemes/ayushman-bharat"
+  },
+  {
+    "id": "pm-mudra",
+    "name": "Pradhan Mantri Mudra Yojana",
+    "department": "Ministry of Finance",
+    "description": "PMMY is a scheme launched by the Hon'ble Prime Minister for providing loans up to 10 lakh to the non-corporate, non-farm small/micro enterprises.",
+    "benefits": ["Loans up to 10 Lakh"],
+    "eligibility": ["Small Business Owners", "Entrepreneurs"],
+    "tags": ["Business", "Loan", "Entrepreneurship", "Financial Services"],
+    "url": "https://www.myscheme.gov.in/schemes/pm-mudra"
+  }
+]

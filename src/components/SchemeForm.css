@@ -1,0 +1,27 @@
+.form-container {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.selection-btn {
+    transition: all 0.2s ease-in-out;
+}
+
+.selection-btn:hover {
+    background: rgba(139, 92, 246, 0.05);
+}
+
+.selection-btn.selected {
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
