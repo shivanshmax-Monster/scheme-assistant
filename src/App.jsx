@@ -1,17 +1,22 @@
 import { useState } from 'react'
-import { PlusCircle, Search, Globe, LayoutDashboard, Settings, FileText } from 'lucide-react'
+import { PlusCircle, Search, Globe, LayoutDashboard, Settings } from 'lucide-react'
 import './App.css'
 import ChatInterface from './components/ChatInterface'
-import SchemeForm from './components/SchemeForm'
 
 function App() {
   const [lang, setLang] = useState('EN');
   const [chatKey, setChatKey] = useState(0);
-  const [activeTab, setActiveTab] = useState('chat'); // 'chat' or 'form'
 
   const handleNewDiscovery = () => {
+    // Changing the key forces the ChatInterface to completely reset its state
     setChatKey(prev => prev + 1);
-    setActiveTab('chat');
+    
+    // Also reset backend session
+    fetch('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'reset' })
+    }).catch(e => console.error(e));
   };
 
   return (
@@ -29,15 +34,8 @@ function App() {
         </button>
 
         <div className="nav-menu" style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-           <div className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setActiveTab('chat')}>
-               <LayoutDashboard size={18} /> Chat Discovery
-           </div>
-           <div className={`nav-item ${activeTab === 'form' ? 'active' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setActiveTab('form')}>
-               <FileText size={18} /> Guided Form
-           </div>
-           <div className="nav-item" style={{ cursor: 'pointer' }} onClick={() => alert('Settings configuration will be available in the next phase.')}>
-               <Settings size={18} /> Settings
-           </div>
+           <div className="nav-item active" style={{ cursor: 'pointer' }}><LayoutDashboard size={18} /> Chat Discovery</div>
+           <div className="nav-item" style={{ cursor: 'pointer' }} onClick={() => alert('Settings configuration will be available in the next phase.')}><Settings size={18} /> Settings</div>
         </div>
 
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -59,11 +57,7 @@ function App() {
 
       {/* Main Content Area */}
       <main className="main-content glass-panel">
-        {activeTab === 'chat' ? (
-            <ChatInterface key={chatKey} />
-        ) : (
-            <SchemeForm />
-        )}
+        <ChatInterface key={chatKey} />
       </main>
     </div>
   )

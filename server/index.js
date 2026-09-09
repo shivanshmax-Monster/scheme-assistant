@@ -1,161 +1,158 @@
 const express = require('express');
 const cors = require('cors');
-const schemesData = require('./data.json');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post('/api/match-form', (req, res) => {
-    const formData = req.body;
-    let scoredSchemes = schemesData.map(s => {
-        let score = 0;
-        const tagsStr = s.tags.join(' ').toLowerCase();
-        const descStr = s.description.toLowerCase();
-        const deptStr = s.department.toLowerCase();
-        const nameStr = s.name.toLowerCase();
+// Simple global state for demo purposes
+let sessionState = {
+    step: 0,
+    searchParams: {}
+};
 
-        if (formData.gender === 'Female' && (tagsStr.includes('women') || descStr.includes('girl') || descStr.includes('female'))) score += 10;
-        if (formData.category && (tagsStr.includes(formData.category.toLowerCase()) || descStr.includes(formData.category.toLowerCase()))) score += 15;
-        if (formData.student === 'Yes' && (tagsStr.includes('education') || nameStr.includes('scholarship'))) score += 10;
-        if (formData.state && (deptStr.includes(formData.state.toLowerCase()) || tagsStr.includes(formData.state.toLowerCase()))) score += 10;
-        
-        return { ...s, rawScore: score };
-    });
+const QUESTIONS = [
+    { key: 'gender', text: 'What is your gender? (Male / Female / Transgender)' },
+    { key: 'age', text: 'What is your age?' },
+    { key: 'maritalStatus', text: 'What is your marital status? (Never Married / Married / Widowed / Divorced)' },
+    { key: 'state', text: 'Which State do you live in? (e.g. Madhya Pradesh, Maharashtra, etc.)' },
+    { key: 'residence', text: 'Do you live in an Urban or Rural area?' },
+    { key: 'category', text: 'What is your category? (General / OBC / PVTG / SC / ST)' }
+];
 
-    let matchedSchemes = scoredSchemes.filter(s => s.rawScore > 0).sort((a, b) => b.rawScore - a.rawScore);
-    if (matchedSchemes.length === 0) matchedSchemes = schemesData.slice(0, 3); // Fallback
+async function fetchFromMySchemeAPI(params) {
+    const facets = [];
+    
+    // Map params closely to the API's requirements (this requires specific casing)
+    if (params.gender) {
+        if(params.gender.toLowerCase() === 'female') facets.push(`"beneficiaryGender":["Female"]`);
+        if(params.gender.toLowerCase() === 'male') facets.push(`"beneficiaryGender":["Male"]`);
+    }
+    if (params.state) facets.push(`"beneficiaryState":["${params.state}"]`);
+    if (params.residence) {
+        if (params.residence.toLowerCase().includes('urban')) facets.push(`"residence":["Urban"]`);
+        if (params.residence.toLowerCase().includes('rural')) facets.push(`"residence":["Rural"]`);
+    }
+    if (params.category) {
+        const cat = params.category.toUpperCase();
+        if (['ST','SC','OBC','GENERAL','PVTG'].includes(cat)) {
+             facets.push(`"caste":["${cat}"]`);
+        }
+    }
+    
+    // Construct the query
+    let q = "[]";
+    if (facets.length > 0) {
+        q = encodeURIComponent(`[{${facets.join(',')}}]`);
+    }
 
-    setTimeout(() => res.json({ schemes: matchedSchemes.slice(0, 5) }), 1000);
-});
+    const url = `https://api.myscheme.gov.in/search/v6/schemes?lang=en&q=${q}&keyword=&sort=&from=0&size=5`;
+    console.log("Fetching from API:", url);
 
-app.post('/api/chat', (req, res) => {
-  const { message } = req.body;
-  const lowerInput = message.toLowerCase().trim();
-
-  // Greetings
-  if (lowerInput === 'hello' || lowerInput === 'hi' || lowerInput === 'hey') {
-      setTimeout(() => {
-        return res.json({
-          type: 'text',
-          message: "Hello! 👋 I am your **AI Government Scheme Assistant**. \n\nI am fully integrated with a massive live-synced database of schemes from myScheme.gov.in. \n\nAsk me about **healthcare, agriculture, business loans, women empowerment, or student scholarships**!"
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'X-Api-Key': 'tYTy5eEhlu9rFjyxuCr7ra7ACp4dv1RH8gWuHTDc',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
         });
-      }, 500);
-      return;
-  }
+        const data = await response.json();
+        
+        if (data && data.data && data.data.schemes) {
+            return data.data.schemes.map(scheme => {
+                let description = scheme.basicDetails || scheme.schemeShortTitle || scheme.schemeName || "";
+                description = description.replace(/<[^>]*>?/gm, ''); 
+                return {
+                    id: scheme.basicDetails?.slug || scheme.schemeName,
+                    name: scheme.schemeName,
+                    department: scheme.ministryName || scheme.stateName || "Govt of India",
+                    description: description.substring(0, 150) + "...",
+                    benefits: [
+                        scheme.tags && scheme.tags.length > 0 ? scheme.tags[0] : "Financial Assistance"
+                    ],
+                    eligibility: ["Check official portal for exact details"],
+                    tags: [scheme.ministryName || "Gov", ...(scheme.tags || [])].slice(0, 3),
+                    url: `https://www.myscheme.gov.in/schemes/${scheme.basicDetails?.slug || ''}`
+                };
+            });
+        }
+    } catch (e) {
+        console.error("Fetch API error:", e);
+    }
+    return [];
+}
 
-  // --- Enhanced NLP Search & Scoring Algorithm ---
-  // 1. Tokenize user input and remove stop words
-  const stopWords = new Set(['i', 'want', 'to', 'find', 'a', 'the', 'is', 'for', 'me', 'what', 'are', 'some', 'get', 'need', 'of', 'and', 'in', 'can', 'you', 'give', 'show', 'tell', 'about', 'how', 'do', 'any', 'scheme', 'schemes', 'yojana', 'am', 'an', 'old', 'from']);
-  const tokens = lowerInput.replace(/[.,!?]/g, '').split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word));
+app.post('/api/chat', async (req, res) => {
+    const { message } = req.body;
+    const lowerInput = message.toLowerCase().trim();
 
-  // Extract common demographic parameters
-  const ageMatch = lowerInput.match(/(\d+)\s*years?\s*old/i) || lowerInput.match(/age\s*(\d+)/i);
-  const age = ageMatch ? parseInt(ageMatch[1]) : null;
-  
-  const isFemale = lowerInput.includes('female') || lowerInput.includes('woman') || lowerInput.includes('girl');
-  const isMale = lowerInput.includes('male') || lowerInput.includes('man') || lowerInput.includes('boy');
-  const isStudent = lowerInput.includes('student') || lowerInput.includes('study') || lowerInput.includes('college') || lowerInput.includes('school');
-  
-  const categoryMatch = lowerInput.match(/\b(st|sc|obc|general|pvtg)\b/i);
-  const category = categoryMatch ? categoryMatch[1].toUpperCase() : null;
+    // Reset command
+    if (lowerInput === 'reset' || lowerInput === 'restart') {
+        sessionState = { step: 0, searchParams: {} };
+        return res.json({ type: 'text', message: "Session restarted. How can I help you today?" });
+    }
 
-  // Extract State (simple examples)
-  const states = ['mp', 'madhya pradesh', 'maharashtra', 'karnataka', 'delhi', 'up', 'uttar pradesh'];
-  let state = null;
-  for (const s of states) {
-      if (lowerInput.includes(s)) {
-          state = s;
-          break;
-      }
-  }
+    // Step 0: Waiting for the user to trigger scheme search
+    if (sessionState.step === 0) {
+        if (lowerInput.includes('scheme') || lowerInput.includes('scholarship') || lowerInput.includes('loan')) {
+            sessionState.step = 1; 
+            return res.json({
+                type: 'text',
+                message: `I'd love to help you find schemes/scholarships! To give you accurate results directly from the government database, I need to ask a few quick questions.\n\n**${QUESTIONS[0].text}**`
+            });
+        } else if (lowerInput === 'hello' || lowerInput === 'hi') {
+            return res.json({
+                type: 'text',
+                message: "Hello! 👋 I am your AI Government Scheme Assistant.\n\nAsk me to **find a scholarship** or **search for schemes**!"
+            });
+        } else {
+             return res.json({
+                type: 'text',
+                message: "I can help you find government schemes and scholarships. Just type **'Find me a scholarship'** to get started!"
+            });
+        }
+    }
 
-  // If no meaningful tokens or parameters remain, skip to generic response
-  if (tokens.length > 0 || age || isFemale || isMale || isStudent || category || state) {
-      // 2. Score each scheme
-      let scoredSchemes = schemesData.map(s => {
-          let score = 0;
-          
-          const tagsStr = s.tags.join(' ').toLowerCase();
-          const nameStr = s.name.toLowerCase();
-          const deptStr = s.department.toLowerCase();
-          const descStr = s.description.toLowerCase();
-          const benefitsStr = s.benefits ? s.benefits.join(' ').toLowerCase() : '';
-          const eligStr = s.eligibility ? s.eligibility.join(' ').toLowerCase() : '';
+    // We are currently asking questions
+    if (sessionState.step > 0 && sessionState.step <= QUESTIONS.length) {
+        const currentQ = QUESTIONS[sessionState.step - 1];
+        
+        // Save the answer to the current question
+        let answer = message.trim();
+        sessionState.searchParams[currentQ.key] = answer;
+        
+        sessionState.step++;
 
-          // Demographic scoring logic (heuristics based on scheme text)
-          if (age) {
-              // If scheme mentions age ranges (mock heuristic)
-              if (descStr.includes(age.toString()) || eligStr.includes(age.toString())) score += 5;
-          }
-          if (isFemale && (tagsStr.includes('women') || descStr.includes('girl') || descStr.includes('female'))) score += 10;
-          if (isMale && tagsStr.includes('men')) score += 5;
-          if (isStudent && (tagsStr.includes('education') || nameStr.includes('scholarship') || descStr.includes('student'))) score += 10;
-          if (category && (tagsStr.includes(category.toLowerCase()) || descStr.includes(category.toLowerCase()) || nameStr.includes(category.toLowerCase()))) score += 15;
-          
-          let stateMapped = state === 'mp' ? 'madhya pradesh' : state;
-          if (stateMapped && (deptStr.includes(stateMapped) || tagsStr.includes(stateMapped))) score += 15;
-
-          tokens.forEach(token => {
-              // Exact matches or strong substring matches using word boundaries
-              const tokenRegex = new RegExp(`\\b${token}\\b`, 'i');
-              
-              if (tokenRegex.test(tagsStr)) score += 5;
-              if (tokenRegex.test(nameStr)) score += 4;
-              if (tokenRegex.test(deptStr)) score += 3;
-              if (tokenRegex.test(descStr)) score += 1;
-              if (tokenRegex.test(benefitsStr)) score += 1;
-              if (tokenRegex.test(eligStr)) score += 1;
-              
-              // Give partial credit if the token is a substring of tags/name (e.g. "scholar" in "scholarship")
-              if (!tokenRegex.test(tagsStr) && tagsStr.includes(token)) score += 2;
-              if (!tokenRegex.test(nameStr) && nameStr.includes(token)) score += 1;
-          });
-
-          return { ...s, rawScore: score };
-      });
-
-      // 3. Filter out zero scores and sort by score descending
-      let matchedSchemes = scoredSchemes.filter(s => s.rawScore > 0).sort((a, b) => b.rawScore - a.rawScore);
-
-      // 4. If schemes found
-      if (matchedSchemes.length > 0) {
-          // Take top 3
-          matchedSchemes = matchedSchemes.slice(0, 3);
-          
-          const schemesWithScore = matchedSchemes.map((s, index) => {
-              // Deterministic match score percentage based on rank
-              const percentageBase = 95 - (index * 4); // 95%, 91%, 87%
-              const finalScore = Math.min(99, percentageBase + (s.rawScore % 4));
-              
-              return {
-                  ...s,
-                  matchScore: finalScore
-              };
-          });
-
-          // Remove the temporary rawScore from output
-          schemesWithScore.forEach(s => delete s.rawScore);
-
-          setTimeout(() => {
-              return res.json({
-                type: 'schemes',
-                message: `I analyzed the government database and found ${schemesWithScore.length} highly relevant scheme${schemesWithScore.length > 1 ? 's' : ''} for you:`,
-                schemes: schemesWithScore
-              });
-          }, 1500);
-          return;
-      }
-  }  // Open-ended response
-  setTimeout(() => {
-      return res.json({
-        type: 'text',
-        message: `I searched our synchronized government database for **"${message.length > 30 ? message.substring(0, 30) + '...' : message}"** but couldn't find an exact match.\n\nTry asking me for "Business Loans", "Agriculture Schemes", or "Student Scholarships".`
-      });
-  }, 1000);
+        if (sessionState.step <= QUESTIONS.length) {
+            // Ask next question
+            return res.json({
+                type: 'text',
+                message: `**${QUESTIONS[sessionState.step - 1].text}**`
+            });
+        } else {
+            // All questions answered! Fetch from API
+            console.log("Completed Questionnaire. Params:", sessionState.searchParams);
+            
+            const schemes = await fetchFromMySchemeAPI(sessionState.searchParams);
+            sessionState.step = 0; // reset
+            
+            if (schemes.length > 0) {
+                return res.json({
+                    type: 'schemes',
+                    message: `Thank you! I found **${schemes.length} schemes** matching your profile directly from the government database! Here are the top results:`,
+                    schemes: schemes
+                });
+            } else {
+                 return res.json({
+                    type: 'text',
+                    message: "Thank you! I queried the government database but couldn't find any direct matches. You might want to try again with different parameters or visit myscheme.gov.in."
+                });
+            }
+        }
+    }
 });
 
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
+    console.log(`Backend server running on http://localhost:${PORT}`);
 });
